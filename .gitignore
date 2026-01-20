@@ -1,0 +1,29 @@
+# .gitignore
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files (これだけは絶対にコミットしない！)
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files, which are likely to contain sentitive data
+# (もし秘密情報がない terraform.tfvars ならコメントアウトしても良いが、学習用なら安全側に倒す)
+*.tfvars
+*.tfvars.json
+
+# Ignore override files as they are usually used to override resources locally and so
+# are not checked in
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Editor directories
+.vscode/
+.idea/
+.DS_Store
