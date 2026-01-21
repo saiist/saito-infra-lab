@@ -60,8 +60,27 @@ module "ecs" {
   ecs_sg_id        = module.security.ecs_sg_id
   target_group_arn = module.alb.tg_arn
 
+  db_secret_arn = module.rds.secret_arn
+  db_host       = module.rds.db_endpoint
+  db_port       = module.rds.db_port
+  db_name       = module.rds.db_name
+
+
   container_image = var.container_image
 
   depends_on = [module.alb]
 
 }
+
+module "rds" {
+  source  = "../../modules/rds"
+  project = var.project
+  env     = var.env
+
+  db_subnet_ids = module.vpc.db_subnet_ids
+  rds_sg_id     = module.security.rds_sg_id
+
+  db_name     = "app"
+  db_username = "appuser"
+}
+

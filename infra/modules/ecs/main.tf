@@ -77,7 +77,18 @@ resource "aws_ecs_task_definition" "app" {
 
       environment = [
         { name = "ENV", value = var.env },
-        { name = "PORT", value = tostring(var.container_port) }
+        { name = "PORT", value = tostring(var.container_port) },
+
+        { name = "DB_HOST", value = var.db_host },
+        { name = "DB_PORT", value = tostring(var.db_port) },
+        { name = "DB_NAME", value = var.db_name }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_SECRET_JSON"
+          valueFrom = var.db_secret_arn
+        }
       ]
 
       logConfiguration = {
@@ -119,4 +130,44 @@ resource "aws_ecs_service" "app" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+}
+
+data "aws_iam_policy_document" "execution_secrets" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+    resources = [
+      var.db_secret_arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "execution_secrets" {
+  name   = "${var.project}-${var.env}-ecs-exec-secrets"
+  policy = data.aws_iam_policy_document.execution_secrets.json
+}
+
+resource "aws_iam_role_policy_attachment" "execution_secrets" {
+  role       = aws_iam_role.execution.name
+  policy_arn = aws_iam_policy.execution_secrets.arn
+}
+
+data "aws_iam_policy_document" "task_secrets" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+    resources = [var.db_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "task_secrets" {
+  name   = "${var.project}-${var.env}-task-secrets"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.task_secrets.json
 }

@@ -16,3 +16,8 @@ variable "desired_count" {
   type    = number
   default = 1
 }
+
+variable "db_secret_arn" { type = string }
+variable "db_host" { type = string }
+variable "db_port" { type = number }
+variable "db_name" { type = string }

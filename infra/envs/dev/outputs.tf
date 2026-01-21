@@ -14,3 +14,7 @@ output "tg_arn" { value = module.alb.tg_arn }
 
 output "ecr_repo_url" { value = module.ecr.repo_url }
 output "ecr_repo_name" { value = module.ecr.repo_name }
+
+output "db_endpoint" { value = module.rds.db_endpoint }
+output "db_port" { value = module.rds.db_port }
+output "db_secret_arn" { value = module.rds.secret_arn }
