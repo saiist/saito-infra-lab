@@ -1,26 +1,57 @@
-# デフォルトは dev 環境
 ENV ?= dev
-DIR = infra/envs/$(ENV)
+DIR := infra/envs/$(ENV)
 
-.PHONY: init plan apply destroy fmt check
+TF ?= terraform
+PLANFILE ?= tfplan
 
-# 初期化 (モジュール追加時などに実行)
+.PHONY: init fmt validate check plan apply apply-auto destroy destroy-auto \
+        show outputs state whoami
+
+whoami:
+	@echo "ENV=$(ENV)"
+	@echo "DIR=$(DIR)"
+	@echo "AWS_PROFILE=$${AWS_PROFILE}"
+	@echo "AWS_REGION=$${AWS_REGION}"
+
 init:
-	cd $(DIR) && terraform init
+	cd $(DIR) && $(TF) init
 
-# コード整形 & 文法チェック (CI/CDの基本)
-check:
-	cd $(DIR) && terraform fmt -recursive
-	cd $(DIR) && terraform validate
+fmt:
+	cd $(DIR) && $(TF) fmt -recursive
 
-# 実行計画 (整形→検証→Plan の順で実行して品質を保つ)
+validate:
+	cd $(DIR) && $(TF) validate
+
+check: fmt validate
+
 plan: check
-	cd $(DIR) && terraform plan
+	cd $(DIR) && $(TF) plan -out=$(PLANFILE)
 
-# 適用 (Planなしで直接Apply)
-apply: check
-	cd $(DIR) && terraform apply
+show:
+	cd $(DIR) && $(TF) show
 
-# 削除 (お掃除用)
-destroy:
-	cd $(DIR) && terraform destroy
+# planを必ず経由して、そのplanをapplyする（推奨）
+apply: plan
+	cd $(DIR) && $(TF) apply $(PLANFILE)
+
+# どうしても自動承認したいときだけ（CI向け）
+apply-auto: plan
+	cd $(DIR) && $(TF) apply -auto-approve $(PLANFILE)
+
+outputs:
+	cd $(DIR) && $(TF) output
+
+state:
+	cd $(DIR) && $(TF) state list
+
+# 事故防止ガード：ENV指定なし/想定外だと止める
+guard-env:
+	@if [ "$(ENV)" = "prod" ] || [ "$(ENV)" = "production" ]; then \
+		echo "Refusing to run destroy for ENV=$(ENV)."; exit 1; \
+	fi
+
+destroy: guard-env check
+	cd $(DIR) && $(TF) destroy
+
+destroy-auto: guard-env check
+	cd $(DIR) && $(TF) destroy -auto-approve
