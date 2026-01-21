@@ -11,3 +11,5 @@ output "rds_sg_id" { value = module.security.rds_sg_id }
 output "api_fqdn" { value = module.alb.fqdn }
 output "alb_dns" { value = module.alb.alb_dns_name }
 output "tg_arn" { value = module.alb.tg_arn }
+
+output "ecr_repo_url" { value = module.ecs.ecr_repo_url }

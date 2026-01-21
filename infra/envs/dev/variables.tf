@@ -5,7 +5,7 @@ variable "aws_region" {
 
 variable "project" {
   type    = string
-  default = "learn-ecs"
+  default = "saito-infra-lab"
 }
 
 variable "env" {

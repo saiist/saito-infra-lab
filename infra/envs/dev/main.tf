@@ -42,3 +42,9 @@ module "alb" {
 
   record_name = var.api_record_name
 }
+
+module "ecs" {
+  source  = "../../modules/ecs"
+  project = var.project
+  env     = var.env
+}
