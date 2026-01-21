@@ -12,4 +12,5 @@ output "api_fqdn" { value = module.alb.fqdn }
 output "alb_dns" { value = module.alb.alb_dns_name }
 output "tg_arn" { value = module.alb.tg_arn }
 
-output "ecr_repo_url" { value = module.ecs.ecr_repo_url }
+output "ecr_repo_url" { value = module.ecr.repo_url }
+output "ecr_repo_name" { value = module.ecr.repo_name }

@@ -27,6 +27,12 @@ data "aws_route53_zone" "this" {
   private_zone = false
 }
 
+module "ecr" {
+  source  = "../../modules/ecr"
+  project = var.project
+  env     = var.env
+}
+
 module "alb" {
   source = "../../modules/alb"
 
@@ -41,10 +47,21 @@ module "alb" {
   zone_name = var.domain_name
 
   record_name = var.api_record_name
+
+  enable_forward_to_tg = true
 }
 
 module "ecs" {
   source  = "../../modules/ecs"
   project = var.project
   env     = var.env
+
+  app_subnet_ids   = module.vpc.app_subnet_ids
+  ecs_sg_id        = module.security.ecs_sg_id
+  target_group_arn = module.alb.tg_arn
+
+  container_image = var.container_image
+
+  depends_on = [module.alb]
+
 }

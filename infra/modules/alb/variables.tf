@@ -9,3 +9,8 @@ variable "zone_id" { type = string }   # Route53 Hosted Zone ID
 variable "zone_name" { type = string } # saito-infra-lab.click
 
 variable "record_name" { type = string } # api.dev
+
+variable "enable_forward_to_tg" {
+  type    = bool
+  default = false
+}

@@ -88,13 +88,23 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = aws_acm_certificate_validation.this.certificate_arn
 
-  # ECSは次フェーズで forward に差し替える
-  default_action {
-    type = "fixed-response"
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "ALB is up. ECS not attached yet."
-      status_code  = "200"
+  dynamic "default_action" {
+    for_each = var.enable_forward_to_tg ? [1] : []
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.app.arn
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = var.enable_forward_to_tg ? [] : [1]
+    content {
+      type = "fixed-response"
+      fixed_response {
+        content_type = "text/plain"
+        message_body = "ALB is up. ECS not attached yet."
+        status_code  = "200"
+      }
     }
   }
 }
