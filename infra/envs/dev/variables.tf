@@ -38,15 +38,12 @@ variable "db_subnet_cidrs" {
   default = ["10.10.20.0/24", "10.10.21.0/24"]
 }
 
-# devはNAT 1台にしてコストを抑える（HAはprodで）
 variable "enable_nat_gateway" {
-  type    = bool
-  default = false
+  type = bool
 }
 
 variable "single_nat_gateway" {
-  type    = bool
-  default = true
+  type = bool
 }
 
 variable "domain_name" {
