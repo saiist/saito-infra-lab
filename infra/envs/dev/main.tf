@@ -96,3 +96,21 @@ module "vpc_endpoints" {
   ecs_sg_id              = module.security.ecs_sg_id
   private_route_table_id = module.vpc.private_route_table_id
 }
+
+module "observability" {
+  source = "../../modules/observability"
+
+  project = var.project
+  env     = var.env
+  region  = var.aws_region
+
+  alarm_email = var.alarm_email
+
+  alb_arn_suffix = module.alb.alb_arn_suffix
+  tg_arn_suffix  = module.alb.tg_arn_suffix
+
+  ecs_cluster_name = module.ecs.cluster_name
+  ecs_service_name = module.ecs.service_name
+
+  db_identifier = module.rds.db_identifier
+}
