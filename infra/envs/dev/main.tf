@@ -84,3 +84,15 @@ module "rds" {
   db_username = "appuser"
 }
 
+module "vpc_endpoints" {
+  source = "../../modules/vpc_endpoints"
+
+  project = var.project
+  env     = var.env
+  region  = var.aws_region
+
+  vpc_id                 = module.vpc.vpc_id
+  app_subnet_ids         = module.vpc.app_subnet_ids
+  ecs_sg_id              = module.security.ecs_sg_id
+  private_route_table_id = module.vpc.private_route_table_id
+}

@@ -41,7 +41,7 @@ variable "db_subnet_cidrs" {
 # devはNAT 1台にしてコストを抑える（HAはprodで）
 variable "enable_nat_gateway" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "single_nat_gateway" {
