@@ -22,3 +22,8 @@ variable "db_secret_arn" { type = string }
 variable "db_host" { type = string }
 variable "db_port" { type = number }
 variable "db_name" { type = string }
+
+variable "initial_task_definition_arn" {
+  type        = string
+  description = "ECS service creation-time task definition ARN. After that, CI updates it; Terraform ignores changes."
+}

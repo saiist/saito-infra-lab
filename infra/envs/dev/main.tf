@@ -66,6 +66,7 @@ module "ecs" {
   db_port       = module.rds.db_port
   db_name       = module.rds.db_name
 
+  initial_task_definition_arn = var.initial_task_definition_arn
 
   container_image = var.container_image
 

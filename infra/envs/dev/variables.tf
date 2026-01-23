@@ -65,3 +65,6 @@ variable "alarm_email" {
   type = string
 }
 
+variable "initial_task_definition_arn" {
+  type = string
+}
