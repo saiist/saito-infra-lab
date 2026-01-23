@@ -58,10 +58,11 @@ jobs:
 
           docker buildx build \
             --platform linux/amd64 \
+            -f app/Dockerfile \
             -t "${IMAGE_URI_SHA}" \
             -t "${IMAGE_URI_DEV}" \
             --push \
-            .
+            app
 
           echo "image=${IMAGE_URI_SHA}" >> $GITHUB_OUTPUT
 
