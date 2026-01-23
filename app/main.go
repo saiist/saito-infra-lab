@@ -56,28 +56,33 @@ func main() {
 }
 
 func dbPing() error {
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-
 	sec, err := loadDBSecret()
 	if err != nil {
 		return err
 	}
 
-	log.Printf("db secret loaded: username=%q dbname=%q", sec.Username, sec.DBName)
+	// ログは漏洩しない範囲で
+	log.Printf("db secret loaded: host=%q port=%d username=%q dbname=%q", sec.Host, sec.Port, sec.Username, sec.DBName)
 
-	dbname := os.Getenv("DB_NAME")
-	if dbname == "" {
-		dbname = sec.DBName
+	if sec.Host == "" {
+		return fmt.Errorf("secret host is empty")
 	}
-
+	if sec.Port == 0 {
+		return fmt.Errorf("secret port is empty")
+	}
+	if sec.DBName == "" {
+		return fmt.Errorf("secret dbname is empty")
+	}
 	if sec.Username == "" {
 		return fmt.Errorf("secret username is empty")
 	}
+	if sec.Password == "" {
+		return fmt.Errorf("secret password is empty")
+	}
 
 	dsn := fmt.Sprintf(
-		"host=%s port=%s dbname=%s user=%s password=%s sslmode=require",
-		host, port, dbname, sec.Username, sec.Password,
+		"host=%s port=%d dbname=%s user=%s password=%s sslmode=require",
+		sec.Host, sec.Port, sec.DBName, sec.Username, sec.Password,
 	)
 
 	db, err := sql.Open("pgx", dsn)
@@ -93,6 +98,8 @@ func dbPing() error {
 }
 
 type dbSecret struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	DBName   string `json:"dbname"`
@@ -107,8 +114,10 @@ func loadDBSecret() (dbSecret, error) {
 	if err := json.Unmarshal([]byte(raw), &s); err != nil {
 		return s, fmt.Errorf("parse DB_SECRET_JSON: %w", err)
 	}
-	if s.Username == "" || s.Password == "" {
-		return s, fmt.Errorf("secret missing username/password")
+
+	// 必須チェック（早めに落とす）
+	if s.Host == "" || s.Port == 0 || s.DBName == "" || s.Username == "" || s.Password == "" {
+		return s, fmt.Errorf("secret missing required fields")
 	}
 	return s, nil
 }
