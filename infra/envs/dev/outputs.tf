@@ -26,3 +26,6 @@ output "alarm_topic_arn" {
 output "dashboard_name" {
   value = module.observability.dashboard_name
 }
+
+output "ecs_execution_role_arn" { value = module.ecs.ecs_execution_role_arn }
+output "ecs_task_role_arn" { value = module.ecs.ecs_task_role_arn }
