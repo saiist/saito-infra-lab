@@ -55,62 +55,6 @@ resource "aws_iam_role" "task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
 }
 
-# Terraformから aws_ecs_task_definition をやめてCIに寄せる
-# resource "aws_ecs_task_definition" "app" {
-#   family                   = "${var.project}-${var.env}-app"
-#   requires_compatibilities = ["FARGATE"]
-#   network_mode             = "awsvpc"
-#   cpu                      = "256"
-#   memory                   = "512"
-
-#   execution_role_arn = aws_iam_role.execution.arn
-#   task_role_arn      = aws_iam_role.task.arn
-
-#   container_definitions = jsonencode([
-#     {
-#       name      = "app"
-#       image     = var.container_image
-#       essential = true
-
-#       portMappings = [
-#         { containerPort = var.container_port, protocol = "tcp" }
-#       ]
-
-#       environment = [
-#         { name = "ENV", value = var.env },
-#         { name = "PORT", value = tostring(var.container_port) },
-
-#         { name = "DB_HOST", value = var.db_host },
-#         { name = "DB_PORT", value = tostring(var.db_port) },
-#         { name = "DB_NAME", value = var.db_name }
-#       ]
-
-#       secrets = [
-#         {
-#           name      = "DB_SECRET_JSON"
-#           valueFrom = var.db_secret_arn
-#         }
-#       ]
-
-#       logConfiguration = {
-#         logDriver = "awslogs"
-#         options = {
-#           awslogs-group         = aws_cloudwatch_log_group.app.name
-#           awslogs-region        = var.aws_region
-#           awslogs-stream-prefix = "app"
-#         }
-#       }
-#     }
-#   ])
-
-#   runtime_platform {
-#     operating_system_family = "LINUX"
-#     cpu_architecture        = "X86_64"
-#   }
-
-# }
-
-
 resource "aws_ecs_service" "app" {
   name            = "${var.project}-${var.env}-app-svc"
   cluster         = aws_ecs_cluster.this.id

@@ -56,10 +56,6 @@ variable "api_record_name" {
   default = "api.dev"
 }
 
-variable "container_image" {
-  type = string
-  # 例: 9770....amazonaws.com/saito-infra-lab-dev-app:dev
-}
 
 variable "alarm_email" {
   type = string

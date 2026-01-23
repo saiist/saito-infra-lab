@@ -7,7 +7,6 @@ variable "ecs_sg_id" { type = string }
 
 variable "target_group_arn" { type = string }
 
-variable "container_image" { type = string } # 例: <ecr_url>:dev
 variable "container_port" {
   type    = number
   default = 8080
@@ -19,9 +18,6 @@ variable "desired_count" {
 }
 
 variable "db_secret_arn" { type = string }
-variable "db_host" { type = string }
-variable "db_port" { type = number }
-variable "db_name" { type = string }
 
 variable "initial_task_definition_arn" {
   type        = string

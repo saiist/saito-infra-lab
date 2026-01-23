@@ -62,16 +62,10 @@ module "ecs" {
   target_group_arn = module.alb.tg_arn
 
   db_secret_arn = module.rds.secret_arn
-  db_host       = module.rds.db_endpoint
-  db_port       = module.rds.db_port
-  db_name       = module.rds.db_name
 
   initial_task_definition_arn = var.initial_task_definition_arn
 
-  container_image = var.container_image
-
   depends_on = [module.alb]
-
 }
 
 module "rds" {
