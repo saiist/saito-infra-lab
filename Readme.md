@@ -11,6 +11,21 @@ Terraformで以下を学習目的で構築する。
 
 ---
 
+## 前提
+- Region: ap-northeast-1 (Tokyo)
+- Environment: dev only（作って壊す前提）
+- Domain: saito-infra-lab.click（Route 53）
+- Example FQDN: api.dev.saito-infra-lab.click
+- App: Go (net/http), HTTP only（TLS終端はALB）
+
+---
+
+## ディレクトリ構成（Terraform）
+- `infra/envs/dev/` : 実行単位（plan/apply/destroyはここを対象）
+- `infra/modules/`  : 各コンポーネントのモジュール群（vpc/alb/ecs/rds/...）
+
+---
+
 ## 構成概要
 
 - ALB（Public Subnet）
@@ -38,6 +53,21 @@ ECS(Fargate) を Private Subnet で起動し、NATなしで運用するための
 - [ ] S3 Gateway Endpoint は **private route table に関連付け**されている  
       （ECRのイメージレイヤ取得でS3が使われるため）
 - [ ] VPCE用SGの inbound は **TCP 443** を **ECSタスクSGからのみ許可**している
+
+---
+
+## ALB(HTTPS)の成立条件（要点）
+- Route 53 の Aレコード(Alias) で ALB に向ける
+- ACM は DNS 検証で証明書発行
+- HTTP(80) → HTTPS(443) リダイレクト
+- Listener(443) が Target Group に forward していること（ECSサービス作成で詰まりがち）
+
+---
+
+## Secrets運用方針
+- Secrets Manager の値は `DB_SECRET_JSON` としてコンテナへ注入する
+- アプリ側でJSONをparseして接続情報を取り出す
+- Secrets取得権限は主に **task execution role**（起動時）に付与する
 
 ---
 

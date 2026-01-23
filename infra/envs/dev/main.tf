@@ -52,9 +52,10 @@ module "alb" {
 }
 
 module "ecs" {
-  source  = "../../modules/ecs"
-  project = var.project
-  env     = var.env
+  source     = "../../modules/ecs"
+  project    = var.project
+  env        = var.env
+  aws_region = var.aws_region
 
   app_subnet_ids   = module.vpc.app_subnet_ids
   ecs_sg_id        = module.security.ecs_sg_id
