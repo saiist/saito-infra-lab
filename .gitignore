@@ -28,3 +28,5 @@ override.tf.json
 .idea/
 .DS_Store
 .envrc
+
+deploy/taskdef-dev.json

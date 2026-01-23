@@ -36,7 +36,7 @@
             "secrets": [
                 {
                     "name": "DB_SECRET_JSON",
-                    "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:977099016337:secret:saito-infra-lab/dev/db-miicGw"
+                    "valueFrom": "${DB_SECRET_ARN}"
                 }
             ],
             "logConfiguration": {
