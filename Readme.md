@@ -114,3 +114,14 @@ ECS(Fargate) を Private Subnet で起動し、NATなしで運用するための
 ## コスト注意点（dev）
 - NAT Gatewayは高額になりやすいので dev では使わない方針
 - Interface VPC Endpoint は AZごとに時間課金があるため、必要最小限にする
+
+---
+
+## CI/CD（GitHub Actions）
+- main への push をトリガに以下を実行する
+  - Docker build（linux/amd64）
+  - ECRへ push（:sha と :dev）
+  - 新しい ECS Task Definition を登録し、ECS Service を更新（ローリング）
+- workflow: `.github/workflows/deploy-dev.yml`
+- task definition template: `deploy/taskdef-dev.json`
+- AWS認証は GitHub OIDC を使用（長期AccessKeyは使わない）

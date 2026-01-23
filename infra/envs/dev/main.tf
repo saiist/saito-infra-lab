@@ -115,3 +115,21 @@ module "observability" {
 
   db_identifier = module.rds.db_identifier
 }
+
+module "cicd_github_oidc" {
+  source = "../../modules/cicd_github_oidc"
+
+  project    = var.project
+  env        = var.env
+  aws_region = var.aws_region
+
+  github_owner = "saiist"
+  github_repo  = "saito-infra-lab"
+  github_ref   = "refs/heads/main"
+
+  ecr_repository_arn = "arn:aws:ecr:ap-northeast-1:977099016337:repository/saito-infra-lab-dev-app"
+  ecs_service_arn    = "arn:aws:ecs:ap-northeast-1:977099016337:service/saito-infra-lab-dev-cluster/saito-infra-lab-dev-app-svc"
+
+  ecs_task_execution_role_arn = "arn:aws:iam::977099016337:role/saito-infra-lab-dev-ecs-exec"
+  ecs_task_role_arn           = "arn:aws:iam::977099016337:role/saito-infra-lab-dev-ecs-task"
+}

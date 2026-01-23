@@ -29,3 +29,7 @@ output "dashboard_name" {
 
 output "ecs_execution_role_arn" { value = module.ecs.ecs_execution_role_arn }
 output "ecs_task_role_arn" { value = module.ecs.ecs_task_role_arn }
+
+output "github_actions_role_arn" {
+  value = module.cicd_github_oidc.github_actions_role_arn
+}

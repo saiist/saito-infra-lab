@@ -1,0 +1,82 @@
+name: deploy-dev
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY: saito-infra-lab-dev-app
+  ECS_CLUSTER: saito-infra-lab-dev-cluster
+  ECS_SERVICE: saito-infra-lab-dev-app-svc
+  ECS_CONTAINER_NAME: app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # （任意）Goのテストを走らせたいなら
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.23'
+      # - run: go test ./...
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image (linux/amd64)
+        id: build-image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          set -euxo pipefail
+
+          IMAGE_URI_SHA="${REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          IMAGE_URI_DEV="${REGISTRY}/${ECR_REPOSITORY}:dev"
+
+          docker buildx build \
+            --platform linux/amd64 \
+            -t "${IMAGE_URI_SHA}" \
+            -t "${IMAGE_URI_DEV}" \
+            --push \
+            .
+
+          echo "image=${IMAGE_URI_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Render task definition (inject new image)
+        id: render-taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: deploy/taskdef-dev.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to ECS (register new task definition + update service)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-taskdef.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
