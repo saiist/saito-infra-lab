@@ -39,7 +39,8 @@ resource "aws_acm_certificate_validation" "this" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "alb_logs" {
-  bucket = "${var.project}-${var.env}-alb-access-logs-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.project}-${var.env}-alb-access-logs-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "alb_logs" {
