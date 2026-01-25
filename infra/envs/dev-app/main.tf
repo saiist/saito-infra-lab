@@ -89,7 +89,6 @@ module "cicd_github_oidc" {
   github_repo  = "saito-infra-lab"
   github_ref   = "refs/heads/main"
 
-  # いまは固定値でもOK（後でmodule outputsに寄せられる）
   ecr_repository_arn = module.ecr.repo_arn
   ecs_service_arn    = module.ecs.service_arn
 
