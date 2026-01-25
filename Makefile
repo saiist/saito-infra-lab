@@ -1,46 +1,34 @@
-# ===== Basics =====
-# STACK: dev-core / dev-app （推奨）
+# ===== Allowed stacks =====
 STACK ?= dev-app
+ALLOWED_STACKS := dev-core dev-app
 
-# 旧互換（ENV=dev-core みたいに指定しても動く）
-ENV ?=
+DIR := infra/envs/$(STACK)
 
 TF ?= terraform
 PLANFILE ?= tfplan
 
-# STACK優先。STACK未指定でENVだけある場合はENVを使う。
-ifeq ($(ENV),)
-  DIR := infra/envs/$(STACK)
-else
-  DIR := infra/envs/$(ENV)
-endif
-
-.PHONY: whoami init fmt validate check plan apply apply-auto destroy destroy-auto \
-        show outputs state guard-stack guard-no-prod \
-        up down core-up core-down app-up app-down
+.PHONY: whoami guard-stack init fmt validate check plan apply apply-auto \
+        show outputs state destroy destroy-auto \
+        core-up app-up up app-down core-down down
 
 whoami:
 	@echo "STACK=$(STACK)"
-	@echo "ENV=$(ENV)"
 	@echo "DIR=$(DIR)"
 	@echo "AWS_PROFILE=$${AWS_PROFILE}"
 	@echo "AWS_REGION=$${AWS_REGION}"
 
-# ===== Guards =====
+# STACKが許可リストにない/ディレクトリがない場合は止める
 guard-stack:
+	@if ! echo "$(ALLOWED_STACKS)" | tr ' ' '\n' | grep -qx "$(STACK)"; then \
+		echo "Invalid STACK=$(STACK)"; \
+		echo "Allowed: $(ALLOWED_STACKS)"; \
+		exit 1; \
+	fi
 	@if [ ! -d "$(DIR)" ]; then \
 		echo "DIR not found: $(DIR)"; \
-		echo "Hint: make whoami STACK=dev-core  or  make whoami STACK=dev-app"; \
 		exit 1; \
 	fi
 
-# 事故防止：prod系は全部拒否（必要なら緩めてOK）
-guard-no-prod:
-	@case "$(STACK)$(ENV)" in \
-	  *prod*|*production*) echo "Refusing to run for prod-like stack: STACK=$(STACK) ENV=$(ENV)"; exit 1 ;; \
-	esac
-
-# ===== Terraform wrappers =====
 init: guard-stack
 	cd $(DIR) && $(TF) init
 
@@ -72,23 +60,25 @@ outputs: guard-stack
 state: guard-stack
 	cd $(DIR) && $(TF) state list
 
-destroy: guard-stack guard-no-prod check
+destroy: guard-stack check
 	cd $(DIR) && $(TF) destroy
 
-destroy-auto: guard-stack guard-no-prod check
+destroy-auto: guard-stack check
 	cd $(DIR) && $(TF) destroy -auto-approve
 
-# ===== Stack-aware shortcuts (recommended) =====
+# ===== Stack-aware shortcuts =====
 core-up:
-	$(MAKE) apply STACK=dev-core ENV=
-app-up:
-	$(MAKE) apply STACK=dev-app ENV=
+	$(MAKE) apply STACK=dev-core
 
-# 依存順序：downは app → core
+app-up:
+	$(MAKE) apply STACK=dev-app
+
+# downは依存順序：app → core
 app-down:
-	$(MAKE) destroy STACK=dev-app ENV=
+	$(MAKE) destroy STACK=dev-app
+
 core-down:
-	$(MAKE) destroy STACK=dev-core ENV=
+	$(MAKE) destroy STACK=dev-core
 
 up: core-up app-up
 down: app-down core-down
