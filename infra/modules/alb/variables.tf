@@ -14,3 +14,13 @@ variable "enable_forward_to_tg" {
   type    = bool
   default = false
 }
+
+variable "enable_access_logs" {
+  type    = bool
+  default = true
+}
+
+variable "access_logs_retention_days" {
+  type    = number
+  default = 3
+}

@@ -36,6 +36,83 @@ resource "aws_acm_certificate_validation" "this" {
   validation_record_fqdns = [for r in aws_route53_record.cert_validation : r.fqdn]
 }
 
+data "aws_caller_identity" "current" {}
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "${var.project}-${var.env}-alb-access-logs-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls   = true
+  block_public_policy = false
+
+  ignore_public_acls      = true
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire"
+    status = "Enabled"
+
+    expiration {
+      days = var.access_logs_retention_days
+    }
+  }
+}
+
+data "aws_iam_policy_document" "alb_logs" {
+  statement {
+    sid    = "AllowALBAccessLogsWrite"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["logdelivery.elasticloadbalancing.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:PutObject",
+      "s3:PutObjectAcl"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.alb_logs.arn}/alb/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+    ]
+
+  }
+
+  statement {
+    sid    = "AllowALBAccessLogsAclCheck"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["logdelivery.elasticloadbalancing.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetBucketAcl"]
+    resources = [aws_s3_bucket.alb_logs.arn]
+  }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  policy = data.aws_iam_policy_document.alb_logs.json
+}
+
+resource "aws_s3_bucket_ownership_controls" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
 resource "aws_lb" "this" {
   name               = "${var.project}-${var.env}-alb"
   load_balancer_type = "application"
@@ -47,6 +124,20 @@ resource "aws_lb" "this" {
   tags = {
     Name = "${var.project}-${var.env}-alb"
   }
+
+  dynamic "access_logs" {
+    for_each = var.enable_access_logs ? [1] : []
+    content {
+      enabled = true
+      bucket  = aws_s3_bucket.alb_logs.bucket
+      prefix  = "alb"
+    }
+  }
+
+  depends_on = [
+    aws_s3_bucket_policy.alb_logs,
+    aws_s3_bucket_ownership_controls.alb_logs
+  ]
 }
 
 resource "aws_lb_target_group" "app" {
