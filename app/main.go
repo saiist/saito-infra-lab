@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -11,10 +10,23 @@ import (
 	"database/sql"
 	"time"
 
+	"log/slog"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+func initLogger() *slog.Logger {
+	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	return slog.New(h)
+}
+
 func main() {
+
+	logger := initLogger()
+	slog.SetDefault(logger)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -33,8 +45,13 @@ func main() {
 	})
 
 	mux.HandleFunc("/db/health", func(w http.ResponseWriter, r *http.Request) {
-		if err := dbPing(); err != nil {
-			http.Error(w, "db ng: "+err.Error(), http.StatusServiceUnavailable)
+		if err := dbPing(r.Context()); err != nil {
+			slog.Warn("db_health_failed",
+				"request_id", requestID(r.Context()),
+				"amzn_trace_id", amznTraceID(r.Context()),
+				"error", err.Error(),
+			)
+			http.Error(w, "db ng", http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -51,18 +68,28 @@ func main() {
 	})
 
 	addr := ":" + port
-	log.Printf("listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	slog.Info("listening", "addr", addr)
+
+	if err := http.ListenAndServe(addr, withObservability(mux)); err != nil {
+		slog.Error("server_exit", "error", err)
+		os.Exit(1)
+	}
 }
 
-func dbPing() error {
+func dbPing(ctx context.Context) error {
 	sec, err := loadDBSecret()
 	if err != nil {
 		return err
 	}
 
-	// ログは漏洩しない範囲で
-	log.Printf("db secret loaded: host=%q port=%d username=%q dbname=%q", sec.Host, sec.Port, sec.Username, sec.DBName)
+	slog.Info("db_secret_loaded",
+		"request_id", requestID(ctx),
+		"amzn_trace_id", amznTraceID(ctx),
+		"host", sec.Host,
+		"port", sec.Port,
+		"username", sec.Username,
+		"dbname", sec.DBName,
+	)
 
 	if sec.Host == "" {
 		return fmt.Errorf("secret host is empty")
@@ -91,10 +118,10 @@ func dbPing() error {
 	}
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	return db.PingContext(ctx)
+	return db.PingContext(pingCtx)
 }
 
 type dbSecret struct {
