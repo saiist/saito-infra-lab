@@ -261,6 +261,13 @@ dev用途ではよくある。
   - ロググループ名が `aws-waf-logs-` で始まっているか
   - `waf.tf` の `aws_wafv2_web_acl_logging_configuration` で `log_destination_configs` が `"<log-group-arn>:*"` になっているか
 
+### 6) ECS Service の destroy が遅い（数分〜）
+- 原因になりがち:
+  - ALB Target Group の deregistration delay（接続ドレイン） がデフォルトで 300秒 のため、タスク停止後に draining 待ちが入る
+- 対応（devは速度優先）:
+  - aws_lb_target_group に deregistration_delay = 10 を設定する（例：10秒）
+  - 併せて aws_ecs_service に force_delete = true / wait_for_steady_state = false を入れるとさらに短縮できることがある
+
 ---
 
 ## 運用コマンド（Makefile）

@@ -74,8 +74,15 @@ resource "aws_ecs_service" "app" {
     container_port   = var.container_port
   }
 
-  deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 200
+  # dev用途で「速く入れ替えたい／多少落ちてもOK」
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+
+  # dev なので強制削除OK
+  force_delete = true
+
+  # dev なのでデプロイ完了を待たない
+  wait_for_steady_state = false
 
   lifecycle {
     ignore_changes = [
