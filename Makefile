@@ -13,6 +13,9 @@ TF ?= terraform
 # plan の出力ファイル名（apply はこの plan を適用する）
 PLANFILE ?= tfplan
 
+# 実行時間計測
+TIME ?= /usr/bin/time -p
+
 .PHONY: whoami guard-stack init fmt validate check plan apply apply-auto \
         show outputs state destroy destroy-auto \
         core-up app-up up app-down core-down down
@@ -56,7 +59,7 @@ check: fmt validate
 
 # plan を作ってファイルに保存（apply は必ずこの plan を使う）
 plan: guard-stack check
-	cd $(DIR) && $(TF) plan -out=$(PLANFILE)
+	cd $(DIR) && $(TIME) $(TF) plan -out=$(PLANFILE)
 
 # terraform show（直近の状態表示。planfileを見たいなら `terraform show tfplan` を別途）
 show: guard-stack
@@ -64,11 +67,11 @@ show: guard-stack
 
 # 推奨：plan を必ず経由し、その planfile を apply
 apply: plan
-	cd $(DIR) && $(TF) apply $(PLANFILE)
+	cd $(DIR) && $(TIME) $(TF) apply -parallelism=20 $(PLANFILE)
 
 # CI/自動化向け：plan は作るが apply は自動承認
 apply-auto: plan
-	cd $(DIR) && $(TF) apply -auto-approve $(PLANFILE)
+	cd $(DIR) && $(TIME) $(TF) apply -parallelism=20 -auto-approve $(PLANFILE)
 
 # outputs の確認（例: db_secret_arn など）
 outputs: guard-stack
@@ -80,11 +83,11 @@ state: guard-stack
 
 # 手動 destroy（確認プロンプトあり）
 destroy: guard-stack check
-	cd $(DIR) && $(TF) destroy
+	cd $(DIR) && $(TIME) $(TF) destroy -parallelism=20
 
 # 自動 destroy（cron/自動化向け）
 destroy-auto: guard-stack check
-	cd $(DIR) && $(TF) destroy -auto-approve
+	cd $(DIR) && $(TIME) $(TF) destroy -auto-approve -parallelism=20
 
 # ===== ショートカット =====
 # core/app を個別に up/down したいとき用
