@@ -84,6 +84,81 @@ ECS(Fargate) を Private Subnet で起動し、NATなしで運用するための
 
 ---
 
+## WAF（ALB / WAFv2, scope=REGIONAL）
+
+このdev環境では、ALBに AWS WAFv2（REGIONAL）を関連付けて簡易防御を入れている。目的は「まず観測 → その後BLOCKへ」の学習と、スキャン/直叩きのノイズを減らすこと。
+
+### 有効化スイッチ
+
+- `enable_waf`
+  - `true`：WAF WebACLを作成し、ALBに関連付ける
+  - `false`：WAFを作らない（devのコスト/学習都合で切替）
+
+### モード（COUNT / BLOCK）
+
+WAFの挙動は `waf_mode` で一括切替する（「全部まとめて切替」方針）。
+
+- `waf_mode = "count"`
+  - マッチしたリクエストは通す（ログで観測）
+- `waf_mode = "block"`
+  - マッチしたリクエストを遮断（403）
+
+### ルール概要（いま入っているもの）
+
+- AWS Managed Rules（ベースライン）
+  - `AWSManagedRulesCommonRuleSet`
+  - `AWSManagedRulesKnownBadInputsRuleSet`
+- 独自ルール
+  - `EnforceHostHeader`
+    - `Host: api.dev.saito-infra-lab.click` 以外を遮断（IP直叩き/Host偽装対策）
+  - `RateLimitPerIp`
+    - 同一IPからの連打を制限（5分窓）
+    - 閾値：`waf_rate_limit_per_ip`（requests per 5 minutes）
+
+### WAFログ（CloudWatch Logs）
+
+WAFログは CloudWatch Logs に出力する。
+
+- ログ保持：`waf_log_retention_days` 日
+- ロググループ名（重要：命名規則あり）
+  - `aws-waf-logs-<project>-<env>-alb`
+  - 先頭が `aws-waf-logs-` でないと、WAFのlogging設定でエラーになりやすい
+
+ログでの確認ポイント：
+
+- RateLimit を COUNT で観測できている
+  - `rateBasedRuleList` に `RateLimitPerIp` が出る
+  - `terminatingRuleId` は `Default_Action`
+  - `action` は `ALLOW`
+
+- RateLimit を BLOCK で遮断できている
+  - `terminatingRuleId = "RateLimitPerIp"`
+  - `terminatingRuleType = "RATE_BASED"`
+  - `action = "BLOCK"`
+
+- Host制限を BLOCK で遮断できている
+  - `terminatingRuleId = "EnforceHostHeader"`
+  - `action = "BLOCK"`
+
+### 動作確認（WAF）
+
+1) Hostヘッダ制限（BLOCK時）
+   - 許可されるHost以外でアクセスすると 403 になる
+
+   例：
+     curl -i -H "Host: 3.114.140.250" https://api.dev.saito-infra-lab.click/health
+
+2) RateLimit（BLOCK時）
+   - 同一IPから短時間に連打すると途中から 403 が返る
+
+   例：
+     for i in $(seq 1 200); do curl -s -o /dev/null -w "%{http_code}\n" https://api.dev.saito-infra-lab.click/health; done
+
+補足：
+- rate-based は 5分窓（300秒）で評価されるため、連打を止めても解除まで少しタイムラグがある。
+
+---
+
 ## Secrets運用方針（DB接続）
 
 - Secrets Manager の値は `DB_SECRET_JSON` としてコンテナへ注入する
@@ -180,6 +255,11 @@ fields @timestamp, @message
 dev用途ではよくある。
 - S3: `BucketNotEmpty`
 - ECR: `RepositoryNotEmptyException`
+
+### 5) WAFログがCloudWatch Logsに出ない / logging設定でエラーになる
+- 確認:
+  - ロググループ名が `aws-waf-logs-` で始まっているか
+  - `waf.tf` の `aws_wafv2_web_acl_logging_configuration` で `log_destination_configs` が `"<log-group-arn>:*"` になっているか
 
 ---
 
