@@ -1,5 +1,7 @@
 output "api_fqdn" { value = module.alb.fqdn }
 output "alb_dns" { value = module.alb.alb_dns_name }
+output "alb_arn" { value = module.alb.alb_arn }
+
 output "tg_arn" { value = module.alb.tg_arn }
 
 output "ecr_repo_url" { value = module.ecr.repo_url }

@@ -28,6 +28,10 @@ module "alb" {
   # access logs を入れてるならここも渡す（デフォルトtrue/3日なら不要）
   enable_access_logs         = true
   access_logs_retention_days = 3
+
+  enable_waf             = true
+  waf_mode               = "block"
+  waf_log_retention_days = 3
 }
 
 module "vpc_endpoints" {

@@ -24,3 +24,26 @@ variable "access_logs_retention_days" {
   type    = number
   default = 3
 }
+
+variable "enable_waf" {
+  description = "ALBにWAFv2を付けるか（dev用）"
+  type        = bool
+  default     = false
+}
+
+variable "waf_mode" {
+  description = "count: 観測のみ / block: ブロック有効"
+  type        = string
+  default     = "count"
+
+  validation {
+    condition     = contains(["count", "block"], var.waf_mode)
+    error_message = "waf_mode must be 'count' or 'block'."
+  }
+}
+
+variable "waf_log_retention_days" {
+  description = "WAFログのCloudWatch Logs保持日数"
+  type        = number
+  default     = 7
+}
