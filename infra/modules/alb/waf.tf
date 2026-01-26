@@ -80,6 +80,39 @@ resource "aws_wafv2_web_acl" "this" {
     }
   }
 
+  # Rate-based: 同一IPからの連打を制限（まずCOUNT→ログ観測、慣れたらBLOCK）
+  rule {
+    name     = "RateLimitPerIp"
+    priority = 1
+
+    action {
+      dynamic "count" {
+        for_each = var.waf_mode == "count" ? [1] : []
+        content {}
+      }
+      dynamic "block" {
+        for_each = var.waf_mode == "block" ? [1] : []
+        content {}
+      }
+    }
+
+    statement {
+      rate_based_statement {
+        # 5分間のリクエスト数で判定（WAFの標準ウィンドウ）
+        # 学習用: 最初は低め(50〜200)にすると再現しやすい
+        limit              = var.waf_rate_limit_per_ip
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.project}-${var.env}-waf-rate-ip"
+      sampled_requests_enabled   = true
+    }
+  }
+
+
   # Hostヘッダ制限は独自ルールで追加
   rule {
     name     = "EnforceHostHeader"

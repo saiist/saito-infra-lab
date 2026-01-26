@@ -47,3 +47,9 @@ variable "waf_log_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "waf_rate_limit_per_ip" {
+  description = "WAF rate-based rule limit per IP (requests per 5 minutes)."
+  type        = number
+  default     = 100
+}
