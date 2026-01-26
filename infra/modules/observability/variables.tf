@@ -20,7 +20,8 @@ variable "alb_arn_suffix" {
 }
 
 variable "tg_arn_suffix" {
-  type = string
+  type    = string
+  default = null
 }
 
 # ECS

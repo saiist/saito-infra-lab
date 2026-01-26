@@ -208,9 +208,9 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Sum" }],
-            ["AWS/ApplicationELB", "UnHealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Maximum" }],
-            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Average", "yAxis" : "right" }]
+            # ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Sum" }],
+            # ["AWS/ApplicationELB", "UnHealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Maximum" }],
+            # ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Average", "yAxis" : "right" }]
           ]
           period = 60
         }

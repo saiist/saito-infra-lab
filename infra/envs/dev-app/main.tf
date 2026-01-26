@@ -23,8 +23,6 @@ module "alb" {
   zone_name   = var.domain_name
   record_name = var.api_record_name
 
-  enable_forward_to_tg = true
-
   # access logs を入れてるならここも渡す（デフォルトtrue/3日なら不要）
   enable_access_logs         = true
   access_logs_retention_days = 3
@@ -53,9 +51,14 @@ module "ecs" {
   env        = var.env
   aws_region = var.aws_region
 
-  app_subnet_ids   = data.terraform_remote_state.core.outputs.app_subnet_ids
-  ecs_sg_id        = data.terraform_remote_state.core.outputs.ecs_sg_id
-  target_group_arn = module.alb.tg_arn
+  app_subnet_ids = data.terraform_remote_state.core.outputs.app_subnet_ids
+  ecs_sg_id      = data.terraform_remote_state.core.outputs.ecs_sg_id
+
+  # --- Blue/Green (ECS native) ---
+  enable_blue_green            = true
+  primary_target_group_arn     = module.alb.primary_target_group_arn
+  alternate_target_group_arn   = module.alb.alternate_target_group_arn
+  production_listener_rule_arn = module.alb.production_listener_rule_arn
 
   db_secret_arn = data.terraform_remote_state.core.outputs.db_secret_arn
 
@@ -74,7 +77,8 @@ module "observability" {
   alarm_email = var.alarm_email
 
   alb_arn_suffix = module.alb.alb_arn_suffix
-  tg_arn_suffix  = module.alb.tg_arn_suffix
+  # TODO: Remove after alb module output fixed
+  tg_arn_suffix = null
 
   ecs_cluster_name = module.ecs.cluster_name
   ecs_service_name = module.ecs.service_name

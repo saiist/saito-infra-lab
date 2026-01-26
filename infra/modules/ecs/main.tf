@@ -69,28 +69,46 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = var.target_group_arn
+    # Blue/Green時は primary TG（blue）を指定
+    target_group_arn = var.enable_blue_green ? var.primary_target_group_arn : var.target_group_arn
     container_name   = "app"
     container_port   = var.container_port
+
+    dynamic "advanced_configuration" {
+      for_each = var.enable_blue_green ? [1] : []
+      content {
+        alternate_target_group_arn = var.alternate_target_group_arn
+        production_listener_rule   = var.production_listener_rule_arn
+        role_arn                   = aws_iam_role.ecs_infra_lb.arn
+        # test_listener_rule は今回は無し（必要なら後で追加）
+      }
+    }
+  }
+
+  dynamic "deployment_configuration" {
+    for_each = var.enable_blue_green ? [1] : []
+    content {
+      strategy = "BLUE_GREEN"
+
+      # “bake time”は新旧共存時間。学習なら短めでOK
+      bake_time_in_minutes = 1
+    }
   }
 
   # dev用途で「速く入れ替えたい／多少落ちてもOK」
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = var.enable_blue_green ? 100 : 0
+  deployment_maximum_percent         = var.enable_blue_green ? 200 : 100
 
-  # dev なので強制削除OK
-  force_delete = true
-
-  # dev なのでデプロイ完了を待たない
+  force_delete          = true
   wait_for_steady_state = false
 
   lifecycle {
     ignore_changes = [
-      task_definition
+      task_definition,
     ]
   }
-
 }
+
 
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
@@ -130,4 +148,26 @@ resource "aws_iam_role_policy" "task_secrets" {
   name   = "${var.project}-${var.env}-task-secrets"
   role   = aws_iam_role.task.id
   policy = data.aws_iam_policy_document.task_secrets.json
+}
+
+data "aws_iam_policy" "ecs_infra_lb" {
+  arn = "arn:aws:iam::aws:policy/AmazonECSInfrastructureRolePolicyForLoadBalancers"
+}
+
+resource "aws_iam_role" "ecs_infra_lb" {
+  name = "${var.project}-${var.env}-ecs-infra-lb"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_infra_lb" {
+  role       = aws_iam_role.ecs_infra_lb.name
+  policy_arn = data.aws_iam_policy.ecs_infra_lb.arn
 }

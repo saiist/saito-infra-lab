@@ -143,14 +143,13 @@ resource "aws_lb" "this" {
   ]
 }
 
-resource "aws_lb_target_group" "app" {
-  name        = "${var.project}-${var.env}-tg"
+resource "aws_lb_target_group" "app_blue" {
+  name        = "${var.project}-${var.env}-tg-blue"
   port        = 8080
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
-  # dev なので短めに
   deregistration_delay = 10
 
   health_check {
@@ -162,6 +161,26 @@ resource "aws_lb_target_group" "app" {
     unhealthy_threshold = 2
   }
 }
+
+resource "aws_lb_target_group" "app_green" {
+  name        = "${var.project}-${var.env}-tg-green"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  deregistration_delay = 10
+
+  health_check {
+    path                = "/health"
+    matcher             = "200"
+    interval            = 15
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
 
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
@@ -185,26 +204,48 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = aws_acm_certificate_validation.this.certificate_arn
 
-  dynamic "default_action" {
-    for_each = var.enable_forward_to_tg ? [1] : []
-    content {
-      type             = "forward"
-      target_group_arn = aws_lb_target_group.app.arn
-    }
-  }
-
-  dynamic "default_action" {
-    for_each = var.enable_forward_to_tg ? [] : [1]
-    content {
-      type = "fixed-response"
-      fixed_response {
-        content_type = "text/plain"
-        message_body = "ALB is up. ECS not attached yet."
-        status_code  = "200"
-      }
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "no matching rule"
+      status_code  = "404"
     }
   }
 }
+
+resource "aws_lb_listener_rule" "prod" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  action {
+    type = "forward"
+
+    forward {
+      target_group {
+        arn    = aws_lb_target_group.app_blue.arn
+        weight = 1
+      }
+      target_group {
+        arn    = aws_lb_target_group.app_green.arn
+        weight = 0
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [local.fqdn]
+    }
+  }
+
+  lifecycle {
+    # ECS blue/green が weight を書き換えるので Terraform は追わない
+    ignore_changes = [action]
+  }
+}
+
+
 
 resource "aws_route53_record" "api_alias" {
   zone_id = var.zone_id

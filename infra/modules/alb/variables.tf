@@ -10,11 +10,6 @@ variable "zone_name" { type = string } # saito-infra-lab.click
 
 variable "record_name" { type = string } # api.dev
 
-variable "enable_forward_to_tg" {
-  type    = bool
-  default = false
-}
-
 variable "enable_access_logs" {
   type    = bool
   default = true
