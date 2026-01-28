@@ -65,7 +65,8 @@ data "aws_iam_policy_document" "deploy" {
       "ecr:InitiateLayerUpload",
       "ecr:PutImage",
       "ecr:UploadLayerPart",
-      "ecr:GetDownloadUrlForLayer"
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:DescribeImages"
     ]
     resources = [var.ecr_repository_arn]
   }
