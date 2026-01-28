@@ -1,8 +1,11 @@
-name: deploy-dev
+name: rollback-dev
 
 on:
-  push:
-    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Git SHA to redeploy (image tag)"
+        required: true
 
 permissions:
   id-token: write
@@ -18,12 +21,10 @@ env:
   ECS_CLUSTER: saito-infra-lab-dev-cluster
   ECS_SERVICE: saito-infra-lab-dev-app-svc
   ECS_CONTAINER_NAME: app
-
-  # 追加: SSM parameter 名を固定
   SSM_DB_SECRET_ARN_PARAM: /saito-infra-lab/dev/db_secret_arn
 
 jobs:
-  deploy:
+  rollback:
     runs-on: ubuntu-latest
 
     steps:
@@ -50,29 +51,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build & push image (linux/amd64)
-        id: build-image
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          set -euxo pipefail
-
-          IMAGE_URI_SHA="${REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
-          IMAGE_URI_DEV="${REGISTRY}/${ECR_REPOSITORY}:dev"
-
-          docker buildx build \
-            --platform linux/amd64 \
-            -f app/Dockerfile \
-            -t "${IMAGE_URI_SHA}" \
-            -t "${IMAGE_URI_DEV}" \
-            --push \
-            app
-
-          echo "image=${IMAGE_URI_SHA}" >> $GITHUB_OUTPUT
-
       - name: Generate task definition json from template (inject secret arn)
         shell: bash
         run: |
@@ -80,20 +58,18 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y gettext-base
 
-          # 変更: GitHub Secret ではなく、直前stepで入れた $DB_SECRET_ARN を使う
           envsubst < deploy/taskdef-dev.tpl.json > deploy/taskdef-dev.json
 
-          # 確認（ARNだけなのでログに出してOK）
           grep -n "DB_SECRET_JSON" -n deploy/taskdef-dev.json
           grep -n "valueFrom" -n deploy/taskdef-dev.json
 
-      - name: Render task definition (inject new image)
+      - name: Render task definition (inject rollback image)
         id: render-taskdef
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: deploy/taskdef-dev.json
           container-name: ${{ env.ECS_CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ inputs.sha }}
 
       - name: Deploy to ECS (register new task definition + update service)
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2

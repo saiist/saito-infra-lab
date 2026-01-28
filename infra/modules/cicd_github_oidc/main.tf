@@ -44,6 +44,9 @@ resource "aws_iam_role" "deploy" {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
 
+
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "deploy" {
   # ECR login（* が必要）
   statement {
@@ -96,6 +99,19 @@ data "aws_iam_policy_document" "deploy" {
       var.ecs_task_role_arn
     ]
   }
+
+  # SSM Parameter Store から DB secret ARN を取得
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/saito-infra-lab/dev/db_secret_arn"
+    ]
+  }
+
 }
 
 resource "aws_iam_policy" "deploy" {
