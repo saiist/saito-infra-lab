@@ -181,9 +181,17 @@ WAFログは CloudWatch Logs に出力する。
   - `${DB_SECRET_ARN}` を埋め込んで `deploy/taskdef-dev.json` を生成して使う（生成物はgit管理しないのが推奨）
 - AWS認証は GitHub OIDC を使用（長期AccessKeyは使わない）
 
-### 重要：DB_SECRET_ARN の更新
-`dev-core` を destroy/apply すると Secret のARNが変わることがある。  
-その場合、GitHub Secrets の `DB_SECRET_ARN` を更新しないとデプロイが失敗する。
+### 重要：DB_SECRET_ARN の更新（GitHub Secretsは使わない）
+
+`dev-core` を destroy/apply すると Secrets Manager の Secret ARN が変わることがある。
+
+このリポジトリでは GitHub Secrets に `DB_SECRET_ARN` は保持せず、SSM Parameter Store に以下のパラメータとして保持する：
+
+- Name: `/saito-infra-lab/dev/db_secret_arn`
+- Value:（Secrets Manager の DB secret ARN）
+
+ARNが変わった場合は、このSSMパラメータを更新すること。
+（GitHub Actions はデプロイ時に SSM から取得して task definition に埋め込む）
 
 ---
 
@@ -319,8 +327,20 @@ dev用途ではよくある。
 
 期待する流れ：
 1) `make up`（core→app）
-2) `dev-core` の `db_secret_arn` を取得し、GitHub Secrets `DB_SECRET_ARN` を更新（スクリプトが実施）
+2) `dev-core` の `db_secret_arn` を取得し、SSM Parameter `/saito-infra-lab/dev/db_secret_arn` を更新
 3) GitHub Actions でデプロイ（main push または rerun）
+
+例（SSM更新）：
+```bash
+DB_SECRET_ARN="$(terraform -chdir=infra/envs/dev-core output -raw db_secret_arn)"
+
+aws ssm put-parameter \
+  --region ap-northeast-1 \
+  --name "/saito-infra-lab/dev/db_secret_arn" \
+  --type "String" \
+  --value "$DB_SECRET_ARN" \
+  --overwrite
+```
 
 ---
 
@@ -411,3 +431,11 @@ rm -f /tmp/ecr-images.json
 make destroy-auto STACK=dev-app
 make destroy-auto STACK=dev-core
 ```
+
+## ロールバック（dev）
+
+`rollback-dev` ワークフローで、ECRに存在する過去イメージタグを指定して再デプロイできる。
+
+- 入力: `image_tag`
+  - 推奨: `deploy-dev` の成功runのコミットSHA（7〜40桁のhex）
+  - 注意: Gitのコミットが必ずECRに存在するとは限らない（deploy-devがpushしたタグのみ存在する）
