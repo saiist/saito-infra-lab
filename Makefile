@@ -73,7 +73,7 @@ apply: plan
 apply-auto: plan
 	cd $(DIR) && $(TIME) $(TF) apply -parallelism=20 -auto-approve $(PLANFILE)
 
-# outputs の確認（例: db_secret_arn など）
+# outputs の確認
 outputs: guard-stack
 	cd $(DIR) && $(TF) output
 

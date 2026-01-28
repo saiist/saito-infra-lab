@@ -3,8 +3,8 @@ name: rollback-dev
 on:
   workflow_dispatch:
     inputs:
-      sha:
-        description: "Git SHA to redeploy (image tag)"
+      image_tag:
+        description: "ECRの既存タグを指定。推奨: deploy-dev のコミットSHA（40桁 / または7桁以上）。例: a1b2c3d4..."
         required: true
 
 permissions:
@@ -63,13 +63,45 @@ jobs:
           grep -n "DB_SECRET_JSON" -n deploy/taskdef-dev.json
           grep -n "valueFrom" -n deploy/taskdef-dev.json
 
+      - name: Validate image_tag format (commit SHA recommended)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.image_tag }}"
+
+          # まず hex のみ許可（コミットSHA運用前提）
+          if [[ ! "$TAG" =~ ^[0-9a-f]+$ ]]; then
+            echo "image_tag must be lowercase hex (commit SHA tag). got: $TAG" >&2
+            exit 1
+          fi
+
+          # 7〜40桁を許可（5桁事故を防ぐ）
+          if (( ${#TAG} < 7 || ${#TAG} > 40 )); then
+            echo "image_tag length must be 7..40. got length=${#TAG} tag=$TAG" >&2
+            exit 1
+          fi
+
+      - name: Verify image tag exists in ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-images \
+            --region "${AWS_REGION}" \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids imageTag="${{ inputs.image_tag }}" \
+            > /dev/null || {
+              echo "ECR tag not found: ${ECR_REPOSITORY}:${{ inputs.image_tag }}" >&2
+              echo "Hint: use the commit SHA from a successful deploy-dev run." >&2
+              exit 1
+            }
+
       - name: Render task definition (inject rollback image)
         id: render-taskdef
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: deploy/taskdef-dev.json
           container-name: ${{ env.ECS_CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ inputs.sha }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ inputs.image_tag }}
 
       - name: Deploy to ECS (register new task definition + update service)
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
