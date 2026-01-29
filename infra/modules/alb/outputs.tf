@@ -10,8 +10,16 @@ output "primary_target_group_arn" {
   value = aws_lb_target_group.app_blue.arn
 }
 
+output "primary_target_group_arn_suffix" {
+  value = aws_lb_target_group.app_blue.arn_suffix
+}
+
 output "alternate_target_group_arn" {
   value = aws_lb_target_group.app_green.arn
+}
+
+output "alternate_target_group_arn_suffix" {
+  value = aws_lb_target_group.app_green.arn_suffix
 }
 
 output "production_listener_rule_arn" {

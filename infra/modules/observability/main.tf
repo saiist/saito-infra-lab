@@ -18,9 +18,9 @@ locals {
 }
 
 # ========== ALB ==========
-resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
-  alarm_name          = "${var.project}-${var.env}-alb-target-5xx"
-  alarm_description   = "ALB target 5xx errors"
+resource "aws_cloudwatch_metric_alarm" "alb_target_5xx_blue" {
+  alarm_name          = "${var.project}-${var.env}-alb-target-5xx-blue"
+  alarm_description   = "ALB target 5xx errors (blue)"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "HTTPCode_Target_5XX_Count"
   statistic           = "Sum"
@@ -31,18 +31,38 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
 
   dimensions = {
     LoadBalancer = var.alb_arn_suffix
-    TargetGroup  = var.tg_arn_suffix
+    TargetGroup  = var.tg_blue_arn_suffix
   }
 
   treat_missing_data = "notBreaching"
-
-  alarm_actions = local.alarm_actions
-  ok_actions    = local.ok_actions
+  alarm_actions      = local.alarm_actions
+  ok_actions         = local.ok_actions
 }
 
-resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
-  alarm_name          = "${var.project}-${var.env}-alb-unhealthy-hosts"
-  alarm_description   = "UnHealthyHostCount > 0"
+resource "aws_cloudwatch_metric_alarm" "alb_target_5xx_green" {
+  alarm_name          = "${var.project}-${var.env}-alb-target-5xx-green"
+  alarm_description   = "ALB target 5xx errors (green)"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = var.tg_green_arn_suffix
+  }
+
+  treat_missing_data = "notBreaching"
+  alarm_actions      = local.alarm_actions
+  ok_actions         = local.ok_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts_blue" {
+  alarm_name          = "${var.project}-${var.env}-alb-unhealthy-hosts-blue"
+  alarm_description   = "UnHealthyHostCount > 0 (blue)"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
   statistic           = "Maximum"
@@ -53,7 +73,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
 
   dimensions = {
     LoadBalancer = var.alb_arn_suffix
-    TargetGroup  = var.tg_arn_suffix
+    TargetGroup  = var.tg_blue_arn_suffix
   }
 
   treat_missing_data = "notBreaching"
@@ -62,9 +82,31 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
   ok_actions    = local.ok_actions
 }
 
-resource "aws_cloudwatch_metric_alarm" "alb_target_response_time" {
-  alarm_name          = "${var.project}-${var.env}-alb-target-response-time"
-  alarm_description   = "TargetResponseTime is high (tune threshold for your app)"
+resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts_green" {
+  alarm_name          = "${var.project}-${var.env}-alb-unhealthy-hosts-green"
+  alarm_description   = "UnHealthyHostCount > 0 (green)"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "UnHealthyHostCount"
+  statistic           = "Maximum"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = var.tg_green_arn_suffix
+  }
+
+  treat_missing_data = "notBreaching"
+
+  alarm_actions = local.alarm_actions
+  ok_actions    = local.ok_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_target_response_time_blue" {
+  alarm_name          = "${var.project}-${var.env}-alb-target-response-time-blue"
+  alarm_description   = "TargetResponseTime is high (tune threshold for your app) (blue)"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "TargetResponseTime"
   statistic           = "Average"
@@ -75,7 +117,29 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_response_time" {
 
   dimensions = {
     LoadBalancer = var.alb_arn_suffix
-    TargetGroup  = var.tg_arn_suffix
+    TargetGroup  = var.tg_blue_arn_suffix
+  }
+
+  treat_missing_data = "notBreaching"
+
+  alarm_actions = local.alarm_actions
+  ok_actions    = local.ok_actions
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_target_response_time_green" {
+  alarm_name          = "${var.project}-${var.env}-alb-target-response-time-green"
+  alarm_description   = "TargetResponseTime is high (tune threshold for your app) (green)"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "TargetResponseTime"
+  statistic           = "Average"
+  period              = 60
+  evaluation_periods  = 3
+  threshold           = 1.0
+  comparison_operator = "GreaterThanThreshold"
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = var.tg_green_arn_suffix
   }
 
   treat_missing_data = "notBreaching"
@@ -208,9 +272,14 @@ resource "aws_cloudwatch_dashboard" "main" {
           region = var.region
           view   = "timeSeries"
           metrics = [
-            # ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Sum" }],
-            # ["AWS/ApplicationELB", "UnHealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Maximum" }],
-            # ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_arn_suffix, { "stat" : "Average", "yAxis" : "right" }]
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_blue_arn_suffix, { "stat" : "Sum", "label" : "5xx blue" }],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_green_arn_suffix, { "stat" : "Sum", "label" : "5xx green" }],
+
+            ["AWS/ApplicationELB", "UnHealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_blue_arn_suffix, { "stat" : "Maximum", "label" : "unhealthy blue" }],
+            ["AWS/ApplicationELB", "UnHealthyHostCount", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_green_arn_suffix, { "stat" : "Maximum", "label" : "unhealthy green" }],
+
+            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_blue_arn_suffix, { "stat" : "Average", "yAxis" : "right", "label" : "rt blue" }],
+            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix, "TargetGroup", var.tg_green_arn_suffix, { "stat" : "Average", "yAxis" : "right", "label" : "rt green" }]
           ]
           period = 60
         }

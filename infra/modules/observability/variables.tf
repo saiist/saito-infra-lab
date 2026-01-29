@@ -19,10 +19,8 @@ variable "alb_arn_suffix" {
   type = string
 }
 
-variable "tg_arn_suffix" {
-  type    = string
-  default = null
-}
+variable "tg_blue_arn_suffix" { type = string }
+variable "tg_green_arn_suffix" { type = string }
 
 # ECS
 variable "ecs_cluster_name" {
