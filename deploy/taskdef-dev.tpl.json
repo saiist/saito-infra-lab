@@ -33,7 +33,7 @@
                     "value": "8080"
                 },
                 {
-                    "name": "FAIL_HEALTH",
+                    "name": "ENABLE_CHAOS",
                     "value": "1"
                 }
             ],

@@ -35,16 +35,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		// 学習/検証用: 強制的に 5xx を返す
-		if os.Getenv("FAIL_HEALTH") == "1" {
-			slog.Warn("health_forced_fail",
-				"request_id", requestID(r.Context()),
-				"amzn_trace_id", amznTraceID(r.Context()),
-			)
-			http.Error(w, "forced fail", http.StatusInternalServerError)
-			return
-		}
-
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -66,6 +56,20 @@ func main() {
 		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("db ok"))
+	})
+
+	mux.HandleFunc("/chaos/500", func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("ENABLE_CHAOS") != "1" {
+			http.NotFound(w, r)
+			return
+		}
+
+		slog.Warn("chaos_500",
+			"request_id", requestID(r.Context()),
+			"amzn_trace_id", amznTraceID(r.Context()),
+		)
+
+		http.Error(w, "chaos 500", http.StatusInternalServerError)
 	})
 
 	// rootはhelloに寄せておく（ALB確認が楽）
