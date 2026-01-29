@@ -34,7 +34,7 @@
                 },
                 {
                     "name": "FAIL_HEALTH",
-                    "value": "0"
+                    "value": "1"
                 }
             ],
             "secrets": [
