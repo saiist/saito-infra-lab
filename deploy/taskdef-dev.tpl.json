@@ -31,6 +31,10 @@
                 {
                     "name": "PORT",
                     "value": "8080"
+                },
+                {
+                    "name": "FAIL_HEALTH",
+                    "value": "0"
                 }
             ],
             "secrets": [

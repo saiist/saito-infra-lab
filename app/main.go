@@ -35,6 +35,16 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		// 学習/検証用: 強制的に 5xx を返す
+		if os.Getenv("FAIL_HEALTH") == "1" {
+			slog.Warn("health_forced_fail",
+				"request_id", requestID(r.Context()),
+				"amzn_trace_id", amznTraceID(r.Context()),
+			)
+			http.Error(w, "forced fail", http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
